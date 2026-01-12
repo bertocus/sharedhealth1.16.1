@@ -19,49 +19,50 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-import java.util.Objects;
-
 import static dev.neddslayer.sharedhealth.components.SharedComponentsInitializer.*;
 
 @Mixin(PlayerEntity.class)
 public abstract class PlayerEntityMixin extends LivingEntity {
-    @Shadow public abstract HungerManager getHungerManager();
-
-	@Shadow @Final public PlayerAbilities abilities;
-
-	@Shadow protected HungerManager hungerManager;
-
-	protected PlayerEntityMixin(EntityType<? extends LivingEntity> entityType, World world) {
+    @Shadow
+    @Final
+    public PlayerAbilities abilities;
+    @Shadow
+    protected HungerManager hungerManager;
+    protected PlayerEntityMixin(EntityType<? extends LivingEntity> entityType, World world) {
         super(entityType, world);
     }
+
+    @Shadow
+    public abstract HungerManager getHungerManager();
 
     @Inject(method = "eatFood", at = @At("HEAD"))
     public void eatFood(World world, ItemStack stack, CallbackInfoReturnable<ItemStack> cir) {
         if (!world.isClient && stack.getItem().isFood()) {
             FoodComponent foodComponent = stack.getItem().getFoodComponent();
-            SharedHungerComponent hungerComponent = SHARED_HUNGER.get(Objects.requireNonNull(this.getServer()).getScoreboard());
-	        SharedSaturationComponent saturationComponent = SHARED_SATURATION.get(Objects.requireNonNull(this.getServer()).getScoreboard());
+            // CHANGE: Use this.world instead of getScoreboard()
+            SharedHungerComponent hungerComponent = SHARED_HUNGER.get(this.world);
+            SharedSaturationComponent saturationComponent = SHARED_SATURATION.get(this.world);
+
             int hunger = hungerComponent.getHunger();
-			float saturation = saturationComponent.getSaturation();
+            float saturation = saturationComponent.getSaturation();
+
             if (this.getHungerManager().getFoodLevel() == hunger && foodComponent != null) {
                 hungerComponent.setHunger(Math.max(this.getHungerManager().getFoodLevel() + foodComponent.getHunger(), 0));
             }
-			if (this.getHungerManager().getSaturationLevel() == saturation && foodComponent != null) {
-				saturationComponent.setSaturation(Math.min(saturation + (float)foodComponent.getHunger() * foodComponent.getSaturationModifier() * 2.0F, (float)hungerComponent.getHunger()));
-			}
+            if (this.getHungerManager().getSaturationLevel() == saturation && foodComponent != null) {
+                saturationComponent.setSaturation(Math.min(saturation + (float) foodComponent.getHunger() * foodComponent.getSaturationModifier() * 2.0F, (float) hungerComponent.getHunger()));
+            }
         }
     }
 
-	@Inject(method = "addExhaustion", at = @At("HEAD"))
-	public void syncExhaustion(float exhaustion, CallbackInfo ci) {
-		if (!this.abilities.invulnerable) {
-			if (!this.getEntityWorld().isClient) {
-				SharedExhaustionComponent component = SHARED_EXHAUSTION.get(Objects.requireNonNull(this.getServer()).getScoreboard());
-				if (this.hungerManager.exhaustion == component.getExhaustion()) {
-					component.setExhaustion(Math.min(component.getExhaustion() + exhaustion, 40.0F));
-				}
-			}
-
-		}
-	}
+    @Inject(method = "addExhaustion", at = @At("HEAD"))
+    public void syncExhaustion(float exhaustion, CallbackInfo ci) {
+        if (!this.abilities.invulnerable && !this.world.isClient) {
+            // CHANGE: Use this.world instead of getScoreboard()
+            SharedExhaustionComponent component = SHARED_EXHAUSTION.get(this.world);
+            if (this.hungerManager.exhaustion == component.getExhaustion()) {
+                component.setExhaustion(Math.min(component.getExhaustion() + exhaustion, 40.0F));
+            }
+        }
+    }
 }

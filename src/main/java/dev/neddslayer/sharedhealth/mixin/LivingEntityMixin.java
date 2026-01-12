@@ -17,17 +17,20 @@ import static dev.neddslayer.sharedhealth.components.SharedComponentsInitializer
 @Mixin(LivingEntity.class)
 public abstract class LivingEntityMixin extends Entity {
 
-    @Shadow public abstract boolean isAlive();
-
     public LivingEntityMixin(EntityType<?> type, World world) {
         super(type, world);
     }
 
-    @Inject(method = "heal", at=@At("HEAD"))
+    @Shadow
+    public abstract boolean isAlive();
+
+    @Inject(method = "heal", at = @At("HEAD"))
     public void healListener(float amount, CallbackInfo ci) {
-        if ((LivingEntity) (Object) this instanceof ServerPlayerEntity player && this.isAlive()) {
+        if ((Object) this instanceof ServerPlayerEntity player && this.isAlive()) {
+            if (player.isSpectator()) return;
             float currentHealth = player.getHealth();
-            SharedHealthComponent component = SHARED_HEALTH.get(player.getScoreboard());
+            // Use player.world instead of getScoreboard()
+            SharedHealthComponent component = SHARED_HEALTH.get(player.world);
             float knownHealth = component.getHealth();
             if (currentHealth == knownHealth) {
                 component.setHealth(knownHealth + amount);

@@ -11,30 +11,30 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import java.util.Objects;
-
 import static dev.neddslayer.sharedhealth.components.SharedComponentsInitializer.SHARED_HUNGER;
 import static dev.neddslayer.sharedhealth.components.SharedComponentsInitializer.SHARED_SATURATION;
 
 @Mixin(StatusEffect.class)
 public abstract class SaturationStatusEffectMixin {
 
-	@Shadow public abstract String getTranslationKey();
+    @Shadow
+    public abstract String getTranslationKey();
 
-	@Inject(method = "applyUpdateEffect", at = @At("HEAD"))
-	public void applyEffectToComponent(LivingEntity entity, int amplifier, CallbackInfo ci) {
-		if (!entity.getEntityWorld().isClient && entity instanceof PlayerEntity playerEntity && Objects.equals(this.getTranslationKey(), "effect.minecraft.saturation")) {
-			SharedHungerComponent hungerComponent = SHARED_HUNGER.get(Objects.requireNonNull(playerEntity.getServer()).getScoreboard());
-			SharedSaturationComponent saturationComponent = SHARED_SATURATION.get(Objects.requireNonNull(playerEntity.getServer()).getScoreboard());
-			int hunger = hungerComponent.getHunger();
-			float saturation = saturationComponent.getSaturation();
-			if (playerEntity.getHungerManager().getFoodLevel() == hunger) {
-				hungerComponent.setHunger(Math.max(playerEntity.getHungerManager().getFoodLevel() + amplifier + 1, 0));
-			}
-			if (playerEntity.getHungerManager().getSaturationLevel() == saturation) {
-				saturationComponent.setSaturation(Math.min(saturation + (float)(amplifier + 1) * 2.0F, (float)hungerComponent.getHunger()));
-			}
-		}
-	}
+    @Inject(method = "applyUpdateEffect", at = @At("HEAD"))
+    public void applyEffectToComponent(LivingEntity entity, int amplifier, CallbackInfo ci) {
+        if (!entity.world.isClient && entity instanceof PlayerEntity playerEntity && "effect.minecraft.saturation".equals(this.getTranslationKey())) {
+            // Use playerEntity.world instead of getScoreboard()
+            SharedHungerComponent hungerComponent = SHARED_HUNGER.get(playerEntity.world);
+            SharedSaturationComponent saturationComponent = SHARED_SATURATION.get(playerEntity.world);
 
+            int hunger = hungerComponent.getHunger();
+            float saturation = saturationComponent.getSaturation();
+            if (playerEntity.getHungerManager().getFoodLevel() == hunger) {
+                hungerComponent.setHunger(Math.max(playerEntity.getHungerManager().getFoodLevel() + amplifier + 1, 0));
+            }
+            if (playerEntity.getHungerManager().getSaturationLevel() == saturation) {
+                saturationComponent.setSaturation(Math.min(saturation + (float) (amplifier + 1) * 2.0F, (float) hungerComponent.getHunger()));
+            }
+        }
+    }
 }
